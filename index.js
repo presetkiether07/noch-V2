@@ -1,49 +1,30 @@
 const express = require("express");
 const puppeteer = require("puppeteer");
-const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-async function getChromePath() {
-  // Find the correct Chrome binary from Puppeteer's cache
-  const baseDir = "/opt/render/.cache/puppeteer/chrome";
-  try {
-    const dirs = fs.readdirSync(baseDir);
-    if (dirs.length > 0) {
-      const latest = dirs.sort().reverse()[0]; // newest version
-      return `${baseDir}/${latest}/chrome-linux64/chrome`;
-    }
-  } catch (err) {
-    console.warn("⚠️ Could not find Chrome in cache:", err.message);
-  }
-  return null;
-}
 
 app.get("/api/spotifydl", async (req, res) => {
   const spotifyUrl = req.query.url;
   if (!spotifyUrl) return res.status(400).json({ error: "Missing ?url= parameter" });
 
-  let executablePath = await getChromePath();
-
   try {
-    console.log("🚀 Launching browser with:", executablePath);
+    console.log("🚀 Launching browser...");
 
+    // Puppeteer automatically manages Chromium path internally
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--no-zygote",
-        "--single-process",
-      ],
+        "--single-process"
+      ]
     });
 
     const page = await browser.newPage();
-
     await page.goto("https://spotimate.io", { waitUntil: "networkidle2", timeout: 60000 });
 
     await page.waitForSelector('input[name="url"]', { timeout: 20000 });
@@ -80,9 +61,8 @@ app.get("/api/spotifydl", async (req, res) => {
   }
 });
 
-app.get("/", async (req, res) => {
-  const path = await getChromePath();
-  res.send(`✅ Spotify Downloader API is running!<br>Chrome path: ${path || "Not found"}`);
+app.get("/", (req, res) => {
+  res.send("✅ Spotify Downloader API is running!");
 });
 
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
