@@ -6,7 +6,7 @@ const ytdl = require("ytdl-core");
 const ytSearch = require("yt-search");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
-const { getPreview } = require("spotify-url-info")(require("node-fetch"));
+const { getPreview } = require("spotify-url-info"); // <-- fixed
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -17,6 +17,9 @@ app.use(express.json());
 const DOWNLOADS_DIR = path.resolve(__dirname, "downloads");
 if (!fs.existsSync(DOWNLOADS_DIR)) fs.mkdirSync(DOWNLOADS_DIR);
 app.use("/downloads", express.static(DOWNLOADS_DIR));
+
+// ... rest of your code unchanged
+
 
 app.get("/download", async (req, res) => {
   const spotifyUrl = req.query.url;
