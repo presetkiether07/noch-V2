@@ -4,28 +4,48 @@ const puppeteer = require("puppeteer");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+async function getChromiumPath() {
+  try {
+    const browserFetcher = puppeteer.createBrowserFetcher();
+    const localRevisions = await browserFetcher.localRevisions();
+    if (localRevisions.length > 0) {
+      const info = await browserFetcher.revisionInfo(localRevisions[0]);
+      return info.executablePath;
+    }
+  } catch (err) {
+    console.warn("⚠️ Could not locate local Chromium:", err.message);
+  }
+  return puppeteer.executablePath();
+}
+
 app.get("/api/spotifydl", async (req, res) => {
   const spotifyUrl = req.query.url;
-  if (!spotifyUrl) return res.status(400).json({ error: "Missing ?url= parameter" });
+  if (!spotifyUrl)
+    return res.status(400).json({ error: "Missing ?url= parameter" });
 
   try {
     console.log("🚀 Launching browser...");
+    const chromePath = await getChromiumPath();
+    console.log("✅ Using Chromium path:", chromePath);
 
-    // Puppeteer automatically manages Chromium path internally
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath: chromePath,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--no-zygote",
-        "--single-process"
-      ]
+        "--single-process",
+      ],
     });
 
     const page = await browser.newPage();
-    await page.goto("https://spotimate.io", { waitUntil: "networkidle2", timeout: 60000 });
+    await page.goto("https://spotimate.io", {
+      waitUntil: "networkidle2",
+      timeout: 60000,
+    });
 
     await page.waitForSelector('input[name="url"]', { timeout: 20000 });
     await page.type('input[name="url"]', spotifyUrl, { delay: 20 });
@@ -47,7 +67,8 @@ app.get("/api/spotifydl", async (req, res) => {
 
     await browser.close();
 
-    if (!data) return res.status(500).json({ error: "Failed to extract song info" });
+    if (!data)
+      return res.status(500).json({ error: "Failed to extract song info" });
 
     res.json({
       songTitle: data.songTitle || "Unknown",
