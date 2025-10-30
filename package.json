@@ -1,16 +1,16 @@
 {
   "name": "spotify-downloader-api",
   "version": "1.0.0",
-  "description": "Spotify Downloader API using Playwright and Spotimate.io",
+  "description": "Spotify Downloader API using Playwright Core and Spotimate.io",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "build": "npx playwright install --with-deps",
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "playwright": "^1.47.2"
+    "playwright-core": "^1.47.2",
+    "chrome-aws-lambda": "^10.1.0"
   },
   "engines": {
     "node": ">=18"
