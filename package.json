@@ -1,7 +1,7 @@
 {
-  "name": "spotify-downloader-bot",
+  "name": "spotdl-rest-api",
   "version": "1.0.0",
-  "description": "Messenger bot with Spotidown Spotify download command",
+  "description": "REST API wrapper for spotDL Spotify downloader",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -11,10 +11,8 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.6.7",
-    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "puppeteer": "^24.1.1"
+    "cors": "^2.8.5"
   },
   "engines": {
     "node": ">=18"
