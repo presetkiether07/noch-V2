@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
+    "build": "npx playwright install --with-deps",
     "start": "node index.js"
   },
   "dependencies": {
