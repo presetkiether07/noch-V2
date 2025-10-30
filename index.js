@@ -1,9 +1,10 @@
 const express = require("express");
 const cors = require("cors");
-const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const fetch = require("node-fetch"); // npm install node-fetch@2
+const { spawn } = require("child_process");
+const SpotifyWebApi = require("spotify-web-api-node");
+const ytDlp = require("yt-dlp-exec");
 
 const app = express();
 app.use(cors());
@@ -15,76 +16,61 @@ if (!fs.existsSync(DOWNLOADS_DIR)) fs.mkdirSync(DOWNLOADS_DIR);
 // Serve downloaded MP3s
 app.use("/downloads", express.static(DOWNLOADS_DIR));
 
-async function getSpotifyTrackInfo(spotifyUrl) {
-  // Extract Spotify track ID
-  const match = spotifyUrl.match(/track\/([a-zA-Z0-9]+)/);
-  if (!match) throw new Error("Invalid Spotify track URL");
+// Spotify API credentials
+const spotifyApi = new SpotifyWebApi({
+  clientId: process.env.SPOTIFY_CLIENT_ID,
+  clientSecret: process.env.SPOTIFY_CLIENT_SECRET
+});
 
-  const trackId = match[1];
-  const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
-    headers: {
-      "Authorization": `Bearer ${process.env.SPOTIFY_TOKEN}` // Create a Spotify API token
-    }
-  });
-
-  if (!res.ok) throw new Error("Failed to fetch Spotify track info");
-  const data = await res.json();
-
-  return {
-    title: data.name,
-    artist: data.artists.map(a => a.name).join(", ")
-  };
+// Refresh Spotify token
+async function refreshToken() {
+  const data = await spotifyApi.clientCredentialsGrant();
+  spotifyApi.setAccessToken(data.body['access_token']);
 }
+refreshToken();
+setInterval(refreshToken, 1000 * 60 * 50); // refresh every 50 mins
 
-// GET endpoint: /spotifydl?url=<spotify-url>
+// Endpoint: /spotifydl?url=<spotify-track-url>
 app.get("/spotifydl", async (req, res) => {
   const spotifyUrl = req.query.url;
-  if (!spotifyUrl) return res.status(400).json({ error: "Missing url query parameter" });
+  if (!spotifyUrl) return res.status(400).json({ success: false, error: "Missing url query parameter" });
 
   try {
-    const { title, artist } = await getSpotifyTrackInfo(spotifyUrl);
-    const searchQuery = `${artist} - ${title}`;
+    // Extract Spotify track ID
+    const match = spotifyUrl.match(/track\/([a-zA-Z0-9]+)/);
+    if (!match) return res.status(400).json({ success: false, error: "Invalid Spotify track URL" });
+    const trackId = match[1];
 
-    const outputTemplate = path.join(DOWNLOADS_DIR, "%(title)s.%(ext)s");
+    // Get track info from Spotify
+    const trackData = await spotifyApi.getTrack(trackId);
+    const title = trackData.body.name;
+    const artist = trackData.body.artists.map(a => a.name).join(", ");
+    const query = `${artist} - ${title} audio`;
 
-    const cmd = spawn("yt-dlp", [
-      `ytsearch1:${searchQuery}`,
-      "-x",
-      "--audio-format", "mp3",
-      "-o", outputTemplate
-    ]);
+    // Search and download from YouTube using yt-dlp
+    const fileName = `${artist} - ${title}.mp3`.replace(/[\/\\?%*:|"<>]/g, '-');
+    const filePath = path.join(DOWNLOADS_DIR, fileName);
 
-    let stdout = "", stderr = "";
+    await ytDlp(`ytsearch1:${query}`, {
+      extractAudio: true,
+      audioFormat: "mp3",
+      output: filePath
+    });
 
-    cmd.stdout.on("data", d => { stdout += d.toString(); });
-    cmd.stderr.on("data", d => { stderr += d.toString(); });
-
-    cmd.on("close", code => {
-      if (code !== 0) {
-        return res.status(500).json({ success: false, error: "yt-dlp failed", code, stderr });
-      }
-
-      // Find the downloaded file
-      const downloadedFiles = fs.readdirSync(DOWNLOADS_DIR)
-        .filter(f => f.toLowerCase().endsWith(".mp3"))
-        .sort((a,b) => fs.statSync(path.join(DOWNLOADS_DIR,b)).mtimeMs - fs.statSync(path.join(DOWNLOADS_DIR,a)).mtimeMs);
-
-      const filename = downloadedFiles[0];
-      const downloadUrl = `${req.protocol}://${req.get("host")}/downloads/${encodeURIComponent(filename)}`;
-
-      res.json({
-        success: true,
-        title,
-        artist,
-        downloadUrl
-      });
+    // Return JSON with download link
+    const downloadUrl = `${req.protocol}://${req.get("host")}/downloads/${encodeURIComponent(fileName)}`;
+    res.json({
+      success: true,
+      title,
+      artist,
+      downloadUrl
     });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message || err.toString() });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SpotifyDL REST API running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`SpotifyDL API running at http://localhost:${PORT}`));
