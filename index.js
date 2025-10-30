@@ -1,76 +1,49 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
-const { spawn } = require("child_process");
-const SpotifyWebApi = require("spotify-web-api-node");
-const ytDlp = require("yt-dlp-exec");
+const express = require('express');
+const ytmusic = require('youtube-music-api'); // npm install youtube-music-api
+const SpotifyWebApi = require('spotify-web-api-node'); // npm install spotify-web-api-node
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const api = new ytmusic();
 
-const DOWNLOADS_DIR = path.resolve(__dirname, "downloads");
-if (!fs.existsSync(DOWNLOADS_DIR)) fs.mkdirSync(DOWNLOADS_DIR);
+api.initalize(); // initialize YT Music API
 
-// Serve downloaded MP3s
-app.use("/downloads", express.static(DOWNLOADS_DIR));
-
-// Spotify API credentials
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET
+// Setup Spotify API
+const spotify = new SpotifyWebApi({
+  clientId: '9c947484d1d74725a2ae7dfa1ead35b6',
+  clientSecret: '2ea2f43035574686a494dbb2ac243457'
 });
 
-// Refresh Spotify token
-async function refreshToken() {
-  const data = await spotifyApi.clientCredentialsGrant();
-  spotifyApi.setAccessToken(data.body['access_token']);
+async function getSpotifyTrack(url) {
+  const trackId = url.split('/track/')[1].split('?')[0];
+  const token = await spotify.clientCredentialsGrant();
+  spotify.setAccessToken(token.body['access_token']);
+  const data = await spotify.getTrack(trackId);
+  return {
+    name: data.body.name,
+    artist: data.body.artists.map(a => a.name).join(', ')
+  };
 }
-refreshToken();
-setInterval(refreshToken, 1000 * 60 * 50); // refresh every 50 mins
 
-// Endpoint: /spotifydl?url=<spotify-track-url>
-app.get("/spotifydl", async (req, res) => {
-  const spotifyUrl = req.query.url;
-  if (!spotifyUrl) return res.status(400).json({ success: false, error: "Missing url query parameter" });
+app.get('/download', async (req, res) => {
+  const spotifyUrl = req.query.track;
+  if(!spotifyUrl) return res.status(400).json({error: 'Missing track url'});
 
   try {
-    // Extract Spotify track ID
-    const match = spotifyUrl.match(/track\/([a-zA-Z0-9]+)/);
-    if (!match) return res.status(400).json({ success: false, error: "Invalid Spotify track URL" });
-    const trackId = match[1];
+    const track = await getSpotifyTrack(spotifyUrl);
+    const results = await api.search(`${track.name} - ${track.artist}`, 'song');
+    const top = results.content[0];
+    if(!top) return res.json({success: false, error: 'No YouTube Music result found'});
 
-    // Get track info from Spotify
-    const trackData = await spotifyApi.getTrack(trackId);
-    const title = trackData.body.name;
-    const artist = trackData.body.artists.map(a => a.name).join(", ");
-    const query = `${artist} - ${title} audio`;
-
-    // Search and download from YouTube using yt-dlp
-    const fileName = `${artist} - ${title}.mp3`.replace(/[\/\\?%*:|"<>]/g, '-');
-    const filePath = path.join(DOWNLOADS_DIR, fileName);
-
-    await ytDlp(`ytsearch1:${query}`, {
-      extractAudio: true,
-      audioFormat: "mp3",
-      output: filePath
-    });
-
-    // Return JSON with download link
-    const downloadUrl = `${req.protocol}://${req.get("host")}/downloads/${encodeURIComponent(fileName)}`;
     res.json({
       success: true,
-      title,
-      artist,
-      downloadUrl
+      title: track.name,
+      artist: track.artist,
+      youtubeUrl: `https://music.youtube.com/watch?v=${top.videoId}`
     });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message || err.toString() });
+  } catch(e) {
+    console.error(e);
+    res.status(500).json({success: false, error: e.message});
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SpotifyDL API running at http://localhost:${PORT}`));
+app.listen(3000, ()=>console.log('Server running on port 3000'));
