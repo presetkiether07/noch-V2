@@ -1,0 +1,27 @@
+{
+  "name": "spotify-downloader-api",
+  "version": "1.0.0",
+  "description": "REST API to download Spotify tracks as MP3 using Spotimate.io and Puppeteer",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "spotify",
+    "mp3",
+    "downloader",
+    "spotimate",
+    "puppeteer",
+    "api"
+  ],
+  "author": "April Manalo",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "puppeteer": "^23.5.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
