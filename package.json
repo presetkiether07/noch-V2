@@ -1,15 +1,16 @@
 {
   "name": "spotify-downloader-api",
   "version": "1.0.0",
-  "description": "Spotify downloader REST API using Puppeteer and Spotimate.io",
+  "description": "Spotify Downloader API using Puppeteer and Spotimate.io",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "postinstall": "apt-get update && apt-get install -y google-chrome-stable || true"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "puppeteer": "22.6.5"
+    "puppeteer": "^22.6.5"
   },
   "engines": {
     "node": ">=18"
