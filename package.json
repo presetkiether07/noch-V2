@@ -5,8 +5,8 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
-    "postinstall": "apt-get update && apt-get install -y google-chrome-stable || true"
+    "postinstall": "npx puppeteer browsers install chrome",
+    "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.19.2",
