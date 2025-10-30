@@ -4,8 +4,7 @@
   "description": "REST API wrapper for spotDL Spotify downloader",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "node index.js"
+    "start": "node index.js"
   },
   "author": "Norch Team",
   "license": "MIT",
