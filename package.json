@@ -1,7 +1,7 @@
 {
   "name": "spotify-downloader-api",
   "version": "1.0.0",
-  "description": "Spotify Downloader API using Puppeteer and Spotimate.io",
+  "description": "Spotify Downloader API using Playwright and Spotimate.io",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "puppeteer": "^22.6.5"
+    "playwright": "^1.47.2"
   },
   "engines": {
     "node": ">=18"
