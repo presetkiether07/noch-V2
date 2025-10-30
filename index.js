@@ -1,58 +1,32 @@
 const express = require("express");
-const puppeteer = require("puppeteer");
+const { chromium } = require("playwright"); // ✅ use Playwright instead of Puppeteer
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-async function getChromiumPath() {
-  try {
-    const browserFetcher = puppeteer.createBrowserFetcher();
-    const localRevisions = await browserFetcher.localRevisions();
-    if (localRevisions.length > 0) {
-      const info = await browserFetcher.revisionInfo(localRevisions[0]);
-      return info.executablePath;
-    }
-  } catch (err) {
-    console.warn("⚠️ Could not locate local Chromium:", err.message);
-  }
-  return puppeteer.executablePath();
-}
 
 app.get("/api/spotifydl", async (req, res) => {
   const spotifyUrl = req.query.url;
   if (!spotifyUrl)
     return res.status(400).json({ error: "Missing ?url= parameter" });
 
+  let browser;
   try {
-    console.log("🚀 Launching browser...");
-    const chromePath = await getChromiumPath();
-    console.log("✅ Using Chromium path:", chromePath);
-
-    const browser = await puppeteer.launch({
+    console.log("🚀 Launching Playwright Chromium...");
+    browser = await chromium.launch({
       headless: true,
-      executablePath: chromePath,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-zygote",
-        "--single-process",
-      ],
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
     await page.goto("https://spotimate.io", {
-      waitUntil: "networkidle2",
+      waitUntil: "networkidle",
       timeout: 60000,
     });
 
-    await page.waitForSelector('input[name="url"]', { timeout: 20000 });
-    await page.type('input[name="url"]', spotifyUrl, { delay: 20 });
-
+    await page.fill('input[name="url"]', spotifyUrl);
     await Promise.all([
       page.click('button[type="submit"], button'),
-      page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 }),
+      page.waitForLoadState("networkidle"),
     ]);
 
     const data = await page.evaluate(() => {
@@ -61,7 +35,7 @@ app.get("/api/spotifydl", async (req, res) => {
         if (pre) return JSON.parse(pre.textContent);
         const match = document.body.innerText.match(/\{.*"mp3DownloadLink".*\}/s);
         if (match) return JSON.parse(match[0]);
-      } catch {}
+      } catch (e) {}
       return null;
     });
 
@@ -78,12 +52,13 @@ app.get("/api/spotifydl", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error:", err);
+    if (browser) await browser.close();
     res.status(500).json({ error: err.message });
   }
 });
 
 app.get("/", (req, res) => {
-  res.send("✅ Spotify Downloader API is running!");
+  res.send("✅ Spotify Downloader API (Playwright) is running!");
 });
 
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
