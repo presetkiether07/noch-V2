@@ -5,8 +5,10 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-     "install": "npx puppeteer browsers install chrome",
-    "start": "node index.js"
+  "download-chrome": "npx puppeteer browsers install chrome",
+  "start": "node index.js"
+}
+
   },
   "dependencies": {
     "express": "^4.19.2",
