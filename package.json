@@ -1,13 +1,13 @@
 {
-  "name": "noch-v2",
+  "name": "spotify-yt-downloader",
   "version": "1.0.0",
-  "description": "Noch V2 - Spotify/YT Music downloader",
+  "description": "Spotify to YouTube Music MP3 downloader",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
-  "author": "Your Name",
+  "author": "Kiether Preset",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.0",
