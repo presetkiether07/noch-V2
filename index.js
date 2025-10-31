@@ -1,23 +1,27 @@
+require("dotenv").config();
 const express = require("express");
 const ytsr = require("ytsr");
 const ytdl = require("ytdl-core");
+const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Simple Spotify URL parser
+app.use(cors());
+app.use(express.json());
+
+// Parse Spotify track ID
 function parseSpotifyUrl(url) {
-  // Example: https://open.spotify.com/track/TRACK_ID
   const regex = /track\/([a-zA-Z0-9]+)/;
   const match = url.match(regex);
   return match ? match[1] : null;
 }
 
-// Fake Spotify metadata fetch (or use spotipy / any Spotify API)
+// Placeholder Spotify metadata fetch
 async function getSpotifyTrackInfo(trackId) {
-  // For demo purposes, we just return trackId as title
-  // Ideally, integrate Spotify Web API here
+  // TODO: Integrate Spotify Web API for real metadata
+  // For now, use trackId as title for demo
   return {
-    title: trackId, // later replace with real track title
+    title: trackId,
     artist: "Unknown Artist",
   };
 }
@@ -25,31 +29,51 @@ async function getSpotifyTrackInfo(trackId) {
 // Endpoint
 app.get("/api/spotifydl", async (req, res) => {
   const spotifyUrl = req.query.url;
-  if (!spotifyUrl) return res.status(400).json({ error: "Missing url parameter" });
+  if (!spotifyUrl)
+    return res.status(400).json({ error: "Missing url parameter" });
 
   try {
     const trackId = parseSpotifyUrl(spotifyUrl);
-    if (!trackId) return res.status(400).json({ error: "Invalid Spotify URL" });
+    if (!trackId)
+      return res.status(400).json({ error: "Invalid Spotify URL" });
 
     const trackInfo = await getSpotifyTrackInfo(trackId);
     const searchQuery = `${trackInfo.title} ${trackInfo.artist}`;
 
     // Search YouTube
-    const searchResults = await ytsr(searchQuery, { limit: 5 });
-    const video = searchResults.items.find((i) => i.type === "video");
-    if (!video) return res.status(404).json({ error: "Track not found on YouTube" });
+    const searchResults = await ytsr(searchQuery, { limit: 10 });
+    const videos = searchResults.items.filter((i) => i.type === "video");
 
-    // Get YouTube audio download link
-    const info = await ytdl.getInfo(video.url);
-    const format = ytdl.chooseFormat(info.formats, { quality: "highestaudio" });
-    if (!format || !format.url) return res.status(500).json({ error: "Failed to get download link" });
+    if (!videos.length)
+      return res.status(404).json({ error: "Track not found on YouTube" });
 
+    // Loop to find first working audio link
+    let downloadLink, videoSelected;
+    for (const video of videos) {
+      try {
+        const info = await ytdl.getInfo(video.url);
+        const format = ytdl.chooseFormat(info.formats, { quality: "highestaudio" });
+        if (format && format.url) {
+          downloadLink = format.url;
+          videoSelected = video;
+          break;
+        }
+      } catch (err) {
+        console.warn("Skipping unavailable video:", video.url);
+      }
+    }
+
+    if (!downloadLink)
+      return res.status(500).json({ error: "No valid YouTube audio found" });
+
+    // Return response
     res.json({
-      title: video.title,
-      image: video.thumbnails[0].url,
-      duration: video.duration,
-      downloadLink: format.url,
+      title: videoSelected.title,
+      image: videoSelected.thumbnails[0].url,
+      duration: videoSelected.duration,
+      downloadLink: downloadLink,
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error", details: error.message });
