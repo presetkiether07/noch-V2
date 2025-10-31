@@ -1,18 +1,24 @@
 {
-  "name": "spotify-ytmusic-api",
+  "name": "noch-v2",
   "version": "1.0.0",
-  "description": "Spotify track downloader via YouTube Music search",
+  "description": "Noch V2 - Spotify/YT Music downloader",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "ytmusic-api": "^1.1.3",
-    "ytdl-core": "^4.11.1"
+    "ytdl-core": "^4.11.1",
+    "validate-any": "^1.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
